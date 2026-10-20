@@ -1,0 +1,40 @@
+[2025-06-25 23:04:00.814] Trying to open ALC device
+[2025-06-25 23:04:00.871] Success
+[2025-06-25 23:04:00.871] Trying to create ALC Context
+[2025-06-25 23:04:00.880] Success
+[2025-06-25 23:04:00.880] Trying make ALC context current
+[2025-06-25 23:04:00.881] Success
+[2025-06-25 23:04:01.989] Check Update
+[2025-06-25 23:04:01.989] Name: MexManager [Latest]
+[2025-06-25 23:04:01.989] URL: https://github.com/Ploaj/MexManager/releases/download/Latest/MexManager.zip
+[2025-06-25 23:04:01.990] Upload Date: 6/26/2025 1:14:55 AM +00:00
+[2025-06-29 15:15:07.135] Trying make ALC context current
+[2025-06-29 15:15:07.135] Success
+[2025-06-29 15:22:02.201] Trying make ALC context current
+[2025-06-29 15:22:02.201] Success
+[2025-06-29 15:22:44.369] Trying make ALC context current
+[2025-06-29 15:22:44.369] Success
+[2025-06-29 15:22:50.842] Trying make ALC context current
+[2025-06-29 15:22:50.842] Success
+[2025-06-29 15:22:57.844] Trying make ALC context current
+[2025-06-29 15:22:57.844] Success
+[2025-06-29 15:23:59.208] Trying make ALC context current
+[2025-06-29 15:23:59.208] Success
+[2025-06-29 15:24:14.307] Trying make ALC context current
+[2025-06-29 15:24:14.307] Success
+[2025-06-29 15:24:24.528] Trying make ALC context current
+[2025-06-29 15:24:24.528] Success
+[2025-06-29 15:27:51.796] Trying make ALC context current
+[2025-06-29 15:27:51.796] Success
+[2025-06-29 15:30:28.498] Trying make ALC context current
+[2025-06-29 15:30:28.498] Success
+[2025-06-29 15:30:48.569] Trying make ALC context current
+[2025-06-29 15:30:48.569] Success
+[2025-06-29 15:31:55.267] Trying make ALC context current
+[2025-06-29 15:31:55.267] Success
+[2025-06-29 15:32:18.153] Trying make ALC context current
+[2025-06-29 15:32:18.153] Success
+[2025-06-29 15:35:33.676] Trying make ALC context current
+[2025-06-29 15:35:33.676] Success
+[2025-06-29 15:36:18.642] Trying make ALC context current
+[2025-06-29 15:36:18.642] Success

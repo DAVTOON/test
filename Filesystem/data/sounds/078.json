@@ -1,0 +1,98 @@
+{
+  "name": "Daisy",
+  "fileName": "daisy.ssm",
+  "groupFlags": 67240705,
+  "flags": 1,
+  "sounds": [
+    {
+      "name": "se_call_daisy"
+    },
+    {
+      "name": "v_daisy_appeal"
+    },
+    {
+      "name": "v_daisy_atk1"
+    },
+    {
+      "name": "v_daisy_atk2"
+    },
+    {
+      "name": "v_daisy_atk3"
+    },
+    {
+      "name": "v_daisy_atk4"
+    },
+    {
+      "name": "v_daisy_atk5"
+    },
+    {
+      "name": "v_daisy_gake"
+    },
+    {
+      "name": "v_daisy_hissatu"
+    },
+    {
+      "name": "v_daisy_hosikie"
+    },
+    {
+      "name": "v_daisy_hura"
+    },
+    {
+      "name": "v_daisy_huttobi"
+    },
+    {
+      "name": "v_daisy_huttobi2"
+    },
+    {
+      "name": "v_daisy_motiage"
+    },
+    {
+      "name": "v_daisy_nemuru"
+    },
+    {
+      "name": "v_daisy_rakka4"
+    },
+    {
+      "name": "v_daisy_yarare"
+    },
+    {
+      "name": "v_daisy_otto"
+    },
+    {
+      "name": "v_daisy_jump"
+    },
+    {
+      "name": ""
+    },
+    {
+      "name": ""
+    },
+    {
+      "name": "v_daisy_kinopio"
+    },
+    {
+      "name": "se_daisy_flyjump"
+    },
+    {
+      "name": "se_daisy_kasa_atk"
+    },
+    {
+      "name": "se_daisy_daikon1"
+    },
+    {
+      "name": "se_daisy_daikon2"
+    },
+    {
+      "name": "se_daisy_bomb"
+    },
+    {
+      "name": "se_daisy_itemA"
+    },
+    {
+      "name": "se_daisy_itemB"
+    },
+    {
+      "name": "se_daisy_itemC"
+    }
+  ]
+}
