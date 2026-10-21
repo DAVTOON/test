@@ -1,0 +1,30 @@
+.toolchain/
+upstream/
+references/
+build/
+dist/
+assets/
+*.iso
+*.gcm
+*.rvz
+*.dol
+*.dat
+*.usd
+*.hps
+*.ssm
+__pycache__/
+*.pyc
+.codex-remote-attachments/
+.env
+.env.*
+*.3dsx
+*.cia
+*.elf
+*.o
+*.a
+*.zip
+*.bin
+*.log
+*.dmp
+# The one-click builder launcher (the repository root ignores *.bat).
+!/tools/easy_build/Build Melee CIA.bat

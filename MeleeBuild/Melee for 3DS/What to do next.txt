@@ -1,0 +1,27 @@
+Melee for New 3DS - your build is ready
+========================================
+
+1. Put your 3DS's SD card in this computer.
+
+2. Open the "Copy to SD card" folder. Select everything inside it (the "3ds"
+   and "cias" folders) and copy it to the SD card. If Windows asks about
+   files that already exist, choose "Replace the files in the destination".
+
+3. Safely eject the SD card and put it back in your 3DS.
+
+4. On the 3DS, open FBI, then choose: SD > cias. Install:
+     melee-3ds.cia        Super Smash Bros. Melee (everything unlocked)
+     melee-3ds-fresh.cia  Melee: Fresh Save (unlock things by playing)
+   You can install one or both. They keep separate saves.
+
+5. Go back to the HOME Menu and start Melee.
+
+Keep the 3ds/melee/files folder on the SD card: the game reads its files
+from there. Homebrew Launcher users can also start melee.3dsx.
+
+Updating later: download the newest builder, build again, and copy the
+"Copy to SD card" contents over the old ones, then install the new CIA
+files in FBI. Your saves are kept.
+
+Problems? The full log is C:\MeleeBuild\build-log.txt. Please attach it when
+asking for help at https://github.com/2gifts/melee-3ds/issues

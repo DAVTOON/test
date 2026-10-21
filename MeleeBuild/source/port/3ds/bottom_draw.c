@@ -1,0 +1,458 @@
+/* A small CPU compositor for the touch screen. Original artwork is decoded
+ * once, independently of GX textures, GPU state and gameplay allocations. */
+#include "bottom.h"
+#include "controls.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define PW 56
+#define PH 78
+#define PORTRAITS 118
+#define RGB(r,g,b) ((((r)>>3)<<11)|(((g)>>2)<<5)|((b)>>3))
+static const uint16_t ink=RGB(230,239,245), muted=RGB(132,159,182), gold=RGB(241,183,63);
+static const uint16_t colors[4]={RGB(246,73,75),RGB(70,149,255),RGB(247,194,51),RGB(68,211,127)};
+static uint16_t* canvas;
+static uint16_t* portraits;
+static unsigned char* opacity;
+static uint16_t backdrop[320*240];
+static unsigned backdrop_ready;
+static uint16_t sheik[5][24*24];
+static unsigned char sheik_alpha[5][24*24];
+static unsigned sheik_ready;
+static unsigned char glyphs[95][32*32], glyph_left[95], glyph_width[95];
+static const char* names[26]={"CAPTAIN FALCON","DONKEY KONG","FOX","MR. GAME & WATCH","KIRBY","BOWSER","LINK","LUIGI","MARIO","MARTH","MEWTWO","NESS","PEACH","PIKACHU","ICE CLIMBERS","JIGGLYPUFF","SAMUS","YOSHI","ZELDA","SHEIK","FALCO","YOUNG LINK","DR. MARIO","ROY","PICHU","GANONDORF"};
+static unsigned be32(const unsigned char* p){return (unsigned)p[0]<<24|(unsigned)p[1]<<16|p[2]<<8|p[3];}
+static unsigned be16(const unsigned char* p){return p[0]<<8|p[1];}
+static uint16_t blend(uint16_t a,uint16_t b,unsigned alpha){
+    unsigned rb=(((a&0xf81f)*alpha+(b&0xf81f)*(32-alpha))>>5)&0xf81f;
+    unsigned g=(((a&0x07e0)*alpha+(b&0x07e0)*(32-alpha))>>5)&0x07e0;
+    return rb|g;
+}
+static void pixel(int x,int y,uint16_t color,unsigned alpha){
+    if((unsigned)x<320&&(unsigned)y<240){uint16_t* p=canvas+x*240+239-y;*p=alpha>=32?color:blend(color,*p,alpha);}
+}
+static void rect(int x,int y,int w,int h,uint16_t color){
+    int endx=x+w,endy=y+h;if(x<0)x=0;if(y<0)y=0;if(endx>320)endx=320;if(endy>240)endy=240;
+    for(int xx=x;xx<endx;++xx){uint16_t* p=canvas+xx*240+240-endy;for(int yy=y;yy<endy;++yy)*p++=color;}
+}
+static void slash(int x,int y,int w,int h,uint16_t color){for(int yy=0;yy<h;++yy)rect(x+yy/3,y+yy,w,1,color);}
+static unsigned glyph_index(unsigned ch){
+    if(ch>='0'&&ch<='9')return ch-'0';
+    if(ch>='A'&&ch<='Z')return ch-'A'+10;
+    if(ch>='a'&&ch<='z')return ch-'a'+36;
+    switch(ch){case '%':return 259;case ':':return 233;case '.':return 231;case '-':return 252;
+    case '/':return 240;case '+':return 251;case '!':return 236;case '?':return 235;
+    case '&':return 261;case '(':return 245;case ')':return 246;case '=':return 254;
+    case ',':return 230;case ';':return 234;case '\'':return 243;case '"':return 244;
+    case '[':return 247;case ']':return 248;case '#':return 260;case '*':return 262;default:return 227;}
+}
+void mp_bottom_font_init(const unsigned char* font){
+    for(unsigned ch=32;ch<127;++ch){
+        unsigned i=ch-32,left=31,right=0;
+        const unsigned char* src=font+512*glyph_index(ch);
+        for(unsigned y=0;y<32;++y)for(unsigned x=0;x<32;++x){
+            unsigned at=((y/8)*4+x/8)*64+(y%8)*8+x%8;
+            unsigned a=(src[at/2]>>(at&1?0:4))&15;
+            glyphs[i][y*32+x]=a;
+            if(a>2){if(x<left)left=x;if(x>right)right=x;}
+        }
+        glyph_left[i]=left<=right?left:0;glyph_width[i]=left<=right?right-left+1:12;
+    }
+}
+static unsigned advance(unsigned ch,int h){return ch==' '?h/3:(glyph_width[ch-32]*h+31)/32+1;}
+static int width(const char* s,int h){int n=0;for(;*s;++s)if((unsigned char)*s>=32&&(unsigned char)*s<127)n+=advance(*s,h);return n;}
+static void text(int x,int y,const char* s,int h,uint16_t color){
+    unsigned rows[64];for(int yy=0;yy<h;++yy)rows[yy]=(yy*32/h)*32;
+    for(;*s;++s){unsigned ch=(unsigned char)*s;if(ch<32||ch>=127)continue;
+        if(ch!=' '){unsigned i=ch-32,w=(glyph_width[i]*h+31)/32;
+            unsigned columns[64];for(unsigned xx=0;xx<w;++xx)columns[xx]=glyph_left[i]+xx*32/h;
+            for(int yy=0;yy<h;++yy)for(unsigned xx=0;xx<w;++xx){
+                unsigned sx=columns[xx];
+                if(sx<32){unsigned a=glyphs[i][rows[yy]+sx];if(a)pixel(x+xx,y+yy,color,(a*32+7)/15);}
+            }
+        }x+=advance(ch,h);
+    }
+}
+static void fit(int x,int y,const char* s,int h,int maxw,uint16_t color){while(h>8&&width(s,h)>maxw)--h;text(x,y,s,h,color);}
+static void right(int x,int y,const char* s,int h,uint16_t color){text(x-width(s,h),y,s,h,color);}
+static void center(int x,int y,const char* s,int h,uint16_t color){text(x-width(s,h)/2,y,s,h,color);}
+static unsigned portrait_index(unsigned character,unsigned costume){
+    if(character==19)character=18;
+    if(character>=26)return 0;
+    unsigned c=character>19?character-1:character;
+    if(costume<4)return costume*25+c;
+    /* The US 1.02 CSS's final images are sparse, unlike animation frames. */
+    static const unsigned char fifth[25]={100,101,2,3,102,5,103,7,104,114,10,11,113,13,14,115,105,106,107,19,108,109,117,23,116};
+    if(costume==5){if(c==0)return 110;if(c==4)return 111;if(c==17)return 112;}
+    return fifth[c];
+}
+static void load_sheik(const char* path){
+    FILE* f=fopen(path,"rb");if(!f)return;
+    fseek(f,0,SEEK_END);long size=ftell(f);rewind(f);
+    if(size<800000||size>2*1024*1024){fclose(f);return;}
+    unsigned char* raw=malloc(size);if(!raw){fclose(f);return;}
+    if(fread(raw,1,size,f)!=(size_t)size){free(raw);fclose(f);return;}fclose(f);
+    unsigned char* b=raw+32;unsigned n=be32(raw+4);static const unsigned ix[5]={25,51,77,103,114};
+    if(n>(unsigned)size-32||n<775156)goto done;
+    for(unsigned c=0;c<5;++c){
+        unsigned d=be32(b+774116+ix[c]*4),p=be32(b+774636+ix[c]*4);
+        if(d+24>n||p+16>n)goto done;
+        unsigned im=be32(b+d),pal=be32(b+p);
+        if(be16(b+d+4)!=24||be16(b+d+6)!=24||be32(b+d+8)!=8||
+            be32(b+p+4)!=2||be16(b+p+12)!=16||im+288>n||pal+32>n)goto done;
+        for(unsigned y=0;y<24;++y)for(unsigned x=0;x<24;++x){
+            unsigned t=((y/8)*3+x/8)*64+(y%8)*8+x%8;
+            unsigned v=be16(b+pal+2*((b[im+t/2]>>(t&1?0:4))&15));
+            unsigned r=v&0x8000?((v>>10)&31)*255/31:((v>>8)&15)*17;
+            unsigned g=v&0x8000?((v>>5)&31)*255/31:((v>>4)&15)*17;
+            unsigned bl=v&0x8000?(v&31)*255/31:(v&15)*17;
+            sheik[c][y*24+x]=RGB(r,g,bl);sheik_alpha[c][y*24+x]=v&0x8000?32:(((v>>12)&7)*32+3)/7;
+        }
+    }sheik_ready=1;
+done:free(raw);
+}
+int mp_bottom_art_init(const unsigned char* font,const char* path,const char* hud_path){
+    mp_bottom_font_init(font);
+    load_sheik(hud_path);
+    FILE* f=fopen(path,"rb");if(!f)return 0;
+    fseek(f,0,SEEK_END);long size=ftell(f);rewind(f);
+    if(size<3550000||size>4*1024*1024){fclose(f);return 0;}
+    unsigned char* raw=malloc(size);
+    if(!raw){fclose(f);return 0;}
+    if(fread(raw,1,size,f)!=(size_t)size){free(raw);fclose(f);return 0;}fclose(f);
+    unsigned char* b=raw+32;unsigned length=be32(raw+4);
+    if(length>(unsigned)size-32||3549180+PORTRAITS*4>length){free(raw);return 0;}
+    portraits=malloc(PORTRAITS*PW*PH*2);opacity=malloc(PORTRAITS*PW*PH);
+    if(!portraits||!opacity){free(raw);mp_bottom_art_exit();return 0;}
+    for(unsigned i=0;i<PORTRAITS;++i){
+        unsigned desc=be32(b+3549180+i*4);
+        if(desc>length-24)goto bad;
+        unsigned image=be32(b+desc),palette=image+136*188;
+        if(be16(b+desc+4)!=136||be16(b+desc+6)!=188||be32(b+desc+8)!=9||
+           image>length||length-image<136*188+528||be32(b+palette+512)!=palette||
+           be32(b+palette+516)!=2||be16(b+palette+524)!=256)goto bad;
+        for(unsigned y=0;y<PH;++y)for(unsigned x=0;x<PW;++x){
+            unsigned rr=0,gg=0,bb=0,aa=0;
+            /* Four premultiplied samples avoid dark outlines on transparency. */
+            for(unsigned sy=0;sy<2;++sy)for(unsigned sx=0;sx<2;++sx){
+                unsigned xx=(2*x+sx)*136/(PW*2),yy=(2*y+sy)*188/(PH*2);
+                unsigned t=((yy/4)*17+xx/8)*32+(yy%4)*8+xx%8;
+                unsigned v=be16(b+palette+2*b[image+t]);
+                unsigned a=v&0x8000?255:(((v>>12)&7)*255+3)/7;
+                unsigned r=v&0x8000?((v>>10)&31)*255/31:((v>>8)&15)*17;
+                unsigned g=v&0x8000?((v>>5)&31)*255/31:((v>>4)&15)*17;
+                unsigned bl=v&0x8000?(v&31)*255/31:(v&15)*17;
+                aa+=a;rr+=r*a;gg+=g*a;bb+=bl*a;
+            }
+            unsigned at=(i*PH+y)*PW+x;
+            if(aa){rr/=aa;gg/=aa;bb/=aa;}portraits[at]=RGB(rr,gg,bb);opacity[at]=(aa*32+510)/1020;
+        }
+    }
+    free(raw);return 1;
+bad:free(raw);mp_bottom_art_exit();return 0;
+}
+void mp_bottom_art_exit(void){free(portraits);free(opacity);portraits=NULL;opacity=NULL;}
+static void portrait(int x,int y,int w,int h,const MPBottomPlayer* p,int dim){
+    if(p->character==19&&sheik_ready){unsigned c=p->costume<5?p->costume:0;
+        y+=(h-w)/2;
+        unsigned columns[56];for(int xx=0;xx<w;++xx)columns[xx]=xx*24/w;
+        for(int yy=0;yy<w;++yy){unsigned row=yy*24/w*24;
+            for(int xx=0;xx<w;++xx){unsigned at=row+columns[xx],a=sheik_alpha[c][at];
+                if(dim)a=a*10/32;if(a)pixel(x+xx,y+yy,sheik[c][at],a);}}
+        return;
+    }
+    if(!portraits||p->character>=26){center(x+w/2,y+h/2-17,"?",36,muted);return;}
+    unsigned index=portrait_index(p->character,p->costume)*PW*PH;
+    unsigned columns[56];for(int xx=0;xx<w;++xx)columns[xx]=xx*PW/w;
+    for(int yy=0;yy<h;++yy){unsigned row=index+(yy*PH/h)*PW;
+        for(int xx=0;xx<w;++xx){unsigned at=row+columns[xx];
+            unsigned a=opacity[at];if(dim)a=a*10/32;if(a)pixel(x+xx,y+yy,portraits[at],a);}}
+}
+static void background(void){
+    if(backdrop_ready){memcpy(canvas,backdrop,sizeof(backdrop));return;}
+    for(int x=0;x<320;++x)for(int y=0;y<240;++y){
+        int glow=(320-x)*(240-y)/10000;canvas[x*240+239-y]=RGB(8+glow,15+glow,26+glow*2);
+    }
+    for(int x=8;x<320;x+=24)rect(x,31,1,180,RGB(20,32,45));
+    for(int y=42;y<212;y+=24)rect(0,y,320,1,RGB(20,32,45));
+    /* Melee's off-center circle/cross silhouette, kept below the content. */
+    for(int y=0;y<190;++y)for(int x=150;x<320;++x){int dx=x-298,dy=y-90,d=dx*dx+dy*dy;
+        if((d>7500&&d<8000)||(d<7800&&((x>272&&x<280)||(y>96&&y<102))))pixel(x,y,RGB(35,47,61),24);
+    }
+    memcpy(backdrop,canvas,sizeof(backdrop));backdrop_ready=1;
+}
+static void header(const char* title,const char* side){
+    rect(0,0,320,29,RGB(10,16,25));slash(0,0,4,29,gold);
+    fit(14,3,title,22,215,ink);right(309,10,side,12,gold);rect(0,29,320,2,gold);
+}
+/* Four 80-pixel buttons: FPS counter, frame-rate mode, view, controls. */
+static void footer(unsigned fps,unsigned show_fps,unsigned expanded,unsigned rate,unsigned guide){
+    static const char*const rates[]={"AUTO 60","AUTO 30","30 LOCK","30 LOCK","60 MAX","60 MAX"};
+    rect(0,214,320,26,RGB(9,15,25));rect(0,214,320,1,RGB(80,98,111));
+    char b[32];snprintf(b,sizeof(b),show_fps?"%u FPS":"FPS OFF",fps);
+    center(40,220,b,13,show_fps?gold:muted);rect(79,219,1,15,RGB(56,70,88));
+    center(120,220,rates[rate<6?rate:0],13,ink);rect(159,219,1,15,RGB(56,70,88));
+    center(200,220,expanded?"WIDE":"4:3",13,ink);rect(239,219,1,15,RGB(56,70,88));
+    extern volatile unsigned mp_native_camera_mode,mp_native_camera_control;
+    if(mp_native_camera_mode)center(280,220,mp_native_camera_control?"CAMERA ON":"CAMERA",13,mp_native_camera_control?gold:ink);
+    else center(280,220,guide?"CLOSE":"CONTROLS",13,guide?gold:ink);
+}
+unsigned mp_bottom_hit(unsigned x,unsigned y){if(x>=320||y<215||y>=240)return 0;return x<80?MP_BOTTOM_FPS:x<160?MP_BOTTOM_RATE:x<240?MP_BOTTOM_VIEW:MP_BOTTOM_GUIDE;}
+static void card(int x,int y,int w,int h,const MPBottomPlayer* p,unsigned slot,int battle,int stock,int stamina){
+    uint16_t color=colors[p->color%4];int out=battle&&stock&&!p->stocks;
+    rect(x,y,w,h,RGB(25,36,51));rect(x,y,3,h,p->kind==3?RGB(66,78,90):color);
+    rect(x+3,y,w-3,1,RGB(70,85,103));
+    if(p->kind==3){char id[12];snprintf(id,sizeof(id),"P%u",slot+1);text(x+11,y+6,id,14,muted);center(x+w/2,y+33,"CLOSED",17,muted);return;}
+    int pw=w>200?56:44,ph=w>200?78:62;
+    portrait(x+5,y+h-ph,pw,ph,p,out);
+    int tx=x+pw+11;char b[32];snprintf(b,sizeof(b),p->kind==1?"P%u / CPU":"PLAYER %u",slot+1);
+    text(tx,y+4,b,11,out?muted:color);
+    const char* name=p->character<26?names[p->character]:"RANDOM";
+    if(w>200){fit(tx,y+17,name,17,125,out?muted:ink);
+        if(battle){snprintf(b,sizeof(b),stamina?"%u HP":"%u%%",p->damage>999?999:p->damage);
+            right(x+w-10,y+17,out?"OUT":b,out?29:43,out?muted:p->damage>=100?gold:ink);}
+    }else{fit(tx,y+16,name,12,w-pw-17,out?muted:ink);
+        if(battle){snprintf(b,sizeof(b),stamina?"%u HP":"%u%%",p->damage>999?999:p->damage);
+            fit(tx,y+30,out?"OUT":b,29,w-pw-17,out?muted:p->damage>=100?gold:ink);}
+    }
+    if(battle){
+        if(stock){unsigned count=p->stocks>99?99:p->stocks;
+            snprintf(b,sizeof(b),"STOCK %u",count);text(tx,y+h-17,b,11,muted);
+            if(w>200)for(unsigned i=0;i<count&&i<8;++i)rect(tx+69+i*11,y+h-13,6,6,color);
+        }else text(tx,y+h-17,stamina?"STAMINA":battle==2?"FREE PLAY":"TIME BATTLE",11,muted);
+    }else text(tx,y+h-19,p->kind==1?"CPU FIGHTER":"A: SELECT",11,muted);
+}
+static void rules(const MPBottomState* s,int y){
+    char b[70];snprintf(b,sizeof(b),s->stock_mode?"%u STOCK  /  %u MIN":"TIME BATTLE  /  %u MIN",s->stock_mode?s->rule_stocks:s->rule_minutes,s->rule_minutes);
+    text(17,y,b,15,ink);text(17,y+20,s->items==255?"ITEMS OFF":"ITEMS ON",12,muted);
+}
+typedef struct { const char *title,*lead,*line1,*line2,*hint; unsigned rules; } MenuHelp;
+/* MenuKind values from the original menu table. Advice describes this
+ * screen, not a different mode; only Versus rule screens show VS defaults. */
+static const MenuHelp menu_help[34]={
+    [0]={"MAIN MENU","CHOOSE YOUR MODE","1-P: CHALLENGES AND PRACTICE","VS: BATTLE CPU OPPONENTS","CIRCLE PAD: CHOOSE   A: OPEN",0},
+    [1]={"1-P MODE","PLAY AT YOUR OWN PACE","REGULAR MATCH: SOLO ADVENTURES","TRAINING: PRACTICE YOUR MOVES","A: OPEN   B: MAIN MENU",0},
+    [2]={"VS MODE","YOUR MELEE RULES","MELEE: FIGHT CPU OPPONENTS","RULES: STOCKS, TIME AND ITEMS","A: OPEN   B: MAIN MENU",1},
+    [3]={"TROPHIES","THE MELEE COLLECTION","GALLERY: TAKE A CLOSER LOOK","COLLECTION: VIEW YOUR TROPHIES","A: OPEN   B: MAIN MENU",0},
+    [4]={"OPTIONS","MAKE YOURSELF AT HOME","ADJUST SOUND AND GAME SETTINGS","TAP 4:3/WIDE BELOW FOR SCREEN WIDTH","A: OPEN   B: MAIN MENU",0},
+    [5]={"DATA","EXPLORE MELEE","RECORDS, SNAPSHOTS AND SECRETS","SOUND TEST: PLAY THE SOUNDTRACK","A: OPEN   B: MAIN MENU",0},
+    [6]={"REGULAR MATCH","TAKE ON A SOLO RUN","CLASSIC: A SERIES OF BATTLES","ADVENTURE: EXPLORE THE WORLDS","A: CHOOSE MODE   B: 1-P MODE",0},
+    [7]={"EVENT MATCH","A CHALLENGE WITH A TWIST","EACH EVENT HAS ITS OWN OBJECTIVE","READ THE OBJECTIVE ON THE TOP SCREEN","A: CHOOSE EVENT   B: BACK",0},
+    [9]={"STADIUM","CHASE A PERSONAL BEST","TARGET TEST AND HOME-RUN CONTEST","MULTI-MAN: SURVIVE THE CROWD","A: CHOOSE EVENT   B: 1-P MODE",0},
+    [12]={"SPECIAL MELEE","CHANGE THE WAY YOU PLAY","TRY STAMINA, GIANT OR TINY MELEE","EACH MODE ADDS ITS OWN BATTLE TWIST","A: CHOOSE MODE   B: VS MODE",0},
+    [13]={"MATCH RULES","YOUR MELEE RULES","CHOOSE TIME OR STOCK BATTLES","ITEM SWITCH: FREQUENCY AND TYPES","LEFT / RIGHT: CHANGE   B: BACK",1},
+    [15]={"MORE RULES","REFINE YOUR MATCH","STOCK TIMER: LIMIT MATCH LENGTH","PAUSE: ALLOW START TO PAUSE","LEFT / RIGHT: CHANGE   B: BACK",0},
+    [16]={"ITEM SWITCH","SET THE ITEM POOL","ITEM FREQUENCY IS THE TOP ROW","OFF STOPS RANDOM ITEM SPAWNS","CHOOSE AN ITEM TO ENABLE OR DISABLE IT",0},
+    [17]={"RANDOM STAGES","BUILD YOUR RANDOM POOL","CHOOSE THE STAGES RANDOM MAY PICK","MANUAL PICKS STILL WORK","A: TOGGLE STAGE   B: BACK",0},
+    [18]={"NAME ENTRY","MAKE YOUR MARK","CREATE OR MANAGE YOUR PLAYER TAGS","YOUR TAGS ARE SAVED WITH YOUR GAME","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [19]={"RUMBLE","CONTROLLER FEEDBACK","THE NEW 3DS HAS NO RUMBLE MOTOR","THIS OPTION DOES NOT ADD VIBRATION","B: OPTIONS",0},
+    [20]={"SOUND","TUNE YOUR AUDIO","ADJUST MUSIC AND SOUND EFFECTS","USE THE CONSOLE VOLUME FOR OVERALL LEVEL","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [21]={"DISPLAY","PICTURE SETTINGS","MELEE USES THE NATIVE LCD RESOLUTION","TAP 4:3/WIDE BELOW TO CHANGE WIDTH","B: OPTIONS",0},
+    [23]={"LANGUAGE","CHOOSE A LANGUAGE","CHANGES THE ORIGINAL GAME'S LANGUAGE","BOTTOM-SCREEN GUIDANCE STAYS IN ENGLISH","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [24]={"ERASE DATA","A FRESH START","CLEAR UNLOCKS, SCORES OR TROPHIES","OR START OVER COMPLETELY","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [25]={"SNAPSHOTS","MELEE MOMENTS","BROWSE PHOTOS TAKEN IN CAMERA MODE","PHOTOS ARE KEPT ON THE SD CARD","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [26]={"ARCHIVES","MELEE ON FILM","SPECIAL MOVIE AND HOW TO PLAY","MOVIES DON'T PLAY ON THE 3DS","B: DATA",0},
+    [27]={"SOUND TEST","LISTEN IN","MUSIC FROM ACROSS THE SERIES","PLUS VOICES AND SOUND EFFECTS","A: PLAY   B: DATA",0},
+    [28]={"RECORDS","LOOK BACK AT YOUR PLAY","VS, BONUS AND MISC. RECORDS","SEE HOW YOUR PLAY STACKS UP","A: OPEN   B: DATA",0},
+    [29]={"SPECIAL","SECRETS UNCOVERED","A LOG OF EVERYTHING YOU'VE UNLOCKED","NEW FIGHTERS, STAGES AND MORE","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [30]={"VS RECORDS","MATCH HISTORY","BROWSE YOUR VERSUS STATISTICS","KOS AND FALLS FOR EVERY FIGHTER","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [31]={"BONUS RECORDS","BONUS COLLECTION","BROWSE THE GAME'S BONUS AWARDS","HOW MANY HAVE YOU EARNED?","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [32]={"MISC. RECORDS","BY THE NUMBERS","VIEW YOUR PLAY STATISTICS","PLAY TIME, MATCHES AND MORE","FOLLOW THE TOP-SCREEN PROMPTS",0},
+    [33]={"MULTI-MAN MELEE","TAKE ON THE CROWD","CHOOSE COUNT, TIME OR ENDLESS","CRUEL MELEE PUTS SURVIVAL TO THE TEST","A: CHOOSE CHALLENGE   B: STADIUM",0}
+};
+static const char* mode_title(unsigned mode){
+    switch(mode){case 3:return "CLASSIC";case 4:return "ADVENTURE";case 5:return "ALL-STAR";
+    case 15:return "TARGET TEST";case 28:return "TRAINING";case 32:return "HOME-RUN";
+    case 43:return "EVENT";default:return "MELEE";}
+}
+static void menu_page(const MPBottomState* s){
+    static const MenuHelp fallback={"MELEE","READY WHEN YOU ARE","FOLLOW THE PROMPTS ON THE TOP SCREEN","TOUCH CONTROLS ARE AVAILABLE BELOW","AUTO/30/60: FRAME RATE   CONTROLS: GUIDE",0};
+    const MenuHelp* m=s->scene==1&&s->menu<34&&menu_help[s->menu].title?&menu_help[s->menu]:&fallback;
+    header(m->title,s->profile?"FRESH SAVE":"3DS");fit(17,44,m->lead,22,286,gold);
+    if(m->rules)rules(s,76);
+    else if(s->scene==1&&s->fighters){
+        /* Save progress: what this save has unlocked so far. */
+        char b[48];rect(17,78,38,2,gold);
+        snprintf(b,sizeof(b),"FIGHTERS %u/25",s->fighters);text(17,87,b,12,s->fighters==25?gold:ink);
+        snprintf(b,sizeof(b),"STAGES %u/29",s->stages);text(165,87,b,12,s->stages==29?gold:ink);
+        snprintf(b,sizeof(b),"TROPHIES %u/293",s->trophies);text(17,104,b,12,s->trophies==293?gold:ink);
+        snprintf(b,sizeof(b),"EVENTS %u/51",s->events);text(165,104,b,12,s->events==51?gold:ink);
+    }
+    else{rect(17,82,38,2,gold);text(17,97,"SUPER SMASH BROS. MELEE",12,muted);}
+    rect(17,122,286,1,RGB(74,88,102));
+    fit(17,138,m->line1,15,286,ink);fit(17,163,m->line2,14,286,muted);
+    /* Fresh save: how to unlock the next fighter (vanilla US conditions),
+     * in place of the main menu's button hint. */
+    static const char*const unlock_hints[11]={
+        "NEXT: JIGGLYPUFF - CLEAR CLASSIC WITH ANY FIGHTER",
+        "NEXT: DR. MARIO - CLEAR CLASSIC AS MARIO",
+        "NEXT: FALCO - CLEAR 100-MAN MELEE",
+        "NEXT: YOUNG LINK - CLEAR CLASSIC WITH 10 FIGHTERS",
+        "NEXT: PICHU - CLEAR EVENT 37",
+        "NEXT: GANONDORF - CLEAR EVENT 29",
+        "NEXT: LUIGI - FINISH ADVENTURE 1-1 AT :X2 ON THE TIMER",
+        "NEXT: MARTH - CLEAR CLASSIC OR ADVENTURE WITH ALL 14 STARTERS",
+        "NEXT: ROY - CLEAR CLASSIC AS MARTH",
+        "NEXT: MEWTWO - 20 HOURS OF VS PLAY OR 700 VS MATCHES",
+        "NEXT: MR. GAME & WATCH - CLEAR CLASSIC WITH EVERY FIGHTER"};
+    if(s->profile&&s->scene==1&&s->menu==0&&s->locked){
+        unsigned i=0;while(!(s->locked&(1u<<i)))++i;
+        fit(17,195,unlock_hints[i],12,286,gold);
+    }else fit(17,195,m->hint,12,286,gold);
+}
+/* CONTROLS: a GUIDE tab (what each button does, following the custom
+ * mapping) and a CUSTOMIZE tab (in-match button mapping, tap jump, reset).
+ * Tapping a button there opens an action picker. Touches:
+ * mp_bottom_guide_touch; bottom.c resets the page when it closes. */
+extern unsigned mp_native_tap_jump(void);
+extern void mp_native_set_tap_jump(unsigned);
+static unsigned guide_tab,picker=MP_BUTTONS;
+#ifdef MP_SMOKE_TEST
+unsigned mp_bottom_controls_state; /* tab | (picked button + 1) << 8 */
+#endif
+static const uint16_t card_color=RGB(25,36,51),line_color=RGB(56,70,88),dark=RGB(10,16,25);
+enum{TABS_Y=5,TABS_H=19,GUIDE_X=150,GUIDE_W=64,CUSTOM_X=218,CUSTOM_W=94,
+     EDIT_Y=182,EDIT_H=27,CELL_Y=35,CELL_STEP=25,CELL_W=149,CELL_H=22,
+     OPTIONS_Y=187,OPTIONS_H=24,TAP_W=222,RESET_X=236,RESET_W=76,
+     PANEL_X=18,PANEL_Y=40,PANEL_W=284,PANEL_H=166,PICK_X=30,PICK_Y=72,PICK_W=126,PICK_H=26};
+/* Picker order; the last option cancels. */
+static const unsigned char picks[7]={MP_ACTION_ATTACK,MP_ACTION_SPECIAL,MP_ACTION_JUMP,MP_ACTION_SHIELD,
+    MP_ACTION_GRAB,MP_ACTION_TAUNT,MP_ACTION_NONE};
+static int inside(unsigned x,unsigned y,int rx,int ry,int rw,int rh){return (int)x>=rx&&(int)x<rx+rw&&(int)y>=ry&&(int)y<ry+rh;}
+static void pill(int x,int y,int w,int h,const char* s,int size,int active){
+    rect(x,y,w,h,active?gold:card_color);center(x+w/2,y+(h-size)/2,s,size,active?dark:ink);
+}
+static void controls_header(void){
+    rect(0,0,320,29,dark);slash(0,0,4,29,gold);fit(14,3,"CONTROLS",22,128,ink);
+    pill(GUIDE_X,TABS_Y,GUIDE_W,TABS_H,"GUIDE",12,guide_tab==0);
+    pill(CUSTOM_X,TABS_Y,CUSTOM_W,TABS_H,"CUSTOMIZE",12,guide_tab==1);
+    rect(0,29,320,2,gold);
+}
+static void cell_position(unsigned button,int* x,int* y){*x=8+(int)(button/6)*155;*y=CELL_Y+(int)(button%6)*CELL_STEP;}
+static void guide_tab_page(void){
+    /* One row per action, listing the buttons that do it in a match. */
+    static const unsigned char rows[6]={MP_ACTION_ATTACK,MP_ACTION_SPECIAL,MP_ACTION_JUMP,MP_ACTION_SHIELD,MP_ACTION_GRAB,MP_ACTION_TAUNT};
+    /* Button lists fit a 106-pixel column; actions start at x=126. */
+    fit(15,36,"CIRCLE PAD",12,106,gold);text(126,36,"MOVE",12,ink);
+    for(int i=0;i<6;++i){
+        char list[64];int n=0;list[0]=0;
+        for(unsigned b=0;b<MP_BUTTONS;++b)if(mp_native_button_action(b)==rows[i]&&n<(int)sizeof(list)-12)
+            n+=snprintf(list+n,sizeof(list)-n,n?" / %s":"%s",mp_button_labels[b]);
+        int y=52+i*16;
+        fit(15,y,n?list:"NOT SET",12,106,n?gold:muted);text(126,y,mp_action_labels[rows[i]],12,ink);
+        if(rows[i]==MP_ACTION_JUMP)right(309,y+1,mp_native_tap_jump()?"TAP JUMP ON":"TAP JUMP OFF",11,muted);
+    }
+    fit(15,148,"C STICK",12,106,gold);text(126,148,"DIRECTIONAL ATTACK",12,ink);
+    fit(15,164,"START / SELECT",12,106,gold);text(126,164,"PAUSE / EXIT GAME",12,ink);
+    rect(8,EDIT_Y,304,EDIT_H,card_color);rect(8,EDIT_Y,3,EDIT_H,gold);
+    text(18,EDIT_Y+8,"CUSTOMIZE BUTTONS",12,gold);
+    right(254,EDIT_Y+9,"IN MATCHES",10,muted);
+    pill(262,EDIT_Y+4,44,EDIT_H-8,"EDIT",12,1);
+}
+static void customize_tab_page(void){
+    int custom=0;
+    for(unsigned b=0;b<MP_BUTTONS;++b){
+        int x,y;cell_position(b,&x,&y);
+        unsigned action=mp_native_button_action(b),changed=action!=mp_native_default_action(b);
+        custom|=changed;
+        rect(x,y,CELL_W,CELL_H,card_color);rect(x,y,3,CELL_H,changed?gold:line_color);
+        text(x+10,y+5,mp_button_labels[b],12,gold);
+        right(x+CELL_W-8,y+5,mp_action_labels[action],12,action==MP_ACTION_NONE?muted:ink);
+    }
+    unsigned on=mp_native_tap_jump();
+    rect(8,OPTIONS_Y,TAP_W,OPTIONS_H,card_color);rect(8,OPTIONS_Y,3,OPTIONS_H,gold);
+    text(18,OPTIONS_Y+6,"TAP JUMP",12,gold);
+    pill(8+TAP_W-48,OPTIONS_Y+3,44,OPTIONS_H-6,on?"ON":"OFF",12,on);
+    rect(RESET_X,OPTIONS_Y,RESET_W,OPTIONS_H,card_color);
+    center(RESET_X+RESET_W/2,OPTIONS_Y+6,"RESET",12,custom?ink:muted);
+}
+static void picker_panel(void){
+    /* Dim the page beneath, between the header and the footer. */
+    for(int x=0;x<320;++x)for(int y=31;y<214;++y){uint16_t* at=&canvas[x*240+239-y];*at=blend(*at,RGB(3,6,11),11);} /* 11/32 of the page shows */
+    rect(PANEL_X,PANEL_Y,PANEL_W,PANEL_H,RGB(14,22,34));rect(PANEL_X,PANEL_Y,PANEL_W,2,gold);
+    char title[32];snprintf(title,sizeof(title),"%s BUTTON",mp_button_labels[picker]);
+    text(PICK_X,PANEL_Y+8,title,15,gold);right(PANEL_X+PANEL_W-12,PANEL_Y+11,"IN MATCHES",11,muted);
+    unsigned current=mp_native_button_action(picker);
+    for(int i=0;i<8;++i){
+        int x=PICK_X+(i%2)*134,y=PICK_Y+(i/2)*32;
+        if(i<7)pill(x,y,PICK_W,PICK_H,mp_action_labels[picks[i]],13,picks[i]==current);
+        else{rect(x,y,PICK_W,PICK_H,dark);center(x+PICK_W/2,y+6,"CANCEL",13,muted);}
+    }
+}
+static void guide_page(void){
+    controls_header();
+    if(guide_tab)customize_tab_page();else guide_tab_page();
+    if(picker<MP_BUTTONS)picker_panel();
+}
+void mp_bottom_guide_reset(void){guide_tab=0;picker=MP_BUTTONS;
+#ifdef MP_SMOKE_TEST
+    mp_bottom_controls_state=0;
+#endif
+}
+/* A touch on the open CONTROLS page (not the footer); 1 if it was used. */
+unsigned mp_bottom_guide_touch(unsigned x,unsigned y){
+    if(y>=214)return 0;
+    if(picker<MP_BUTTONS){
+        for(int i=0;i<7;++i)if(inside(x,y,PICK_X+(i%2)*134,PICK_Y+(i/2)*32,PICK_W,PICK_H))
+            mp_native_set_button_action(picker,picks[i]);
+        picker=MP_BUTTONS; /* any tap closes the picker */
+    }else if(y<29){
+        if(inside(x,y,GUIDE_X,0,GUIDE_W,29))guide_tab=0;
+        else if(inside(x,y,CUSTOM_X,0,CUSTOM_W,29))guide_tab=1;
+    }else if(!guide_tab){
+        if(inside(x,y,8,EDIT_Y,304,EDIT_H))guide_tab=1;
+    }else{
+        for(unsigned b=0;b<MP_BUTTONS;++b){int cx,cy;cell_position(b,&cx,&cy);if(inside(x,y,cx,cy,CELL_W,CELL_H))picker=b;}
+        if(inside(x,y,8,OPTIONS_Y,TAP_W,OPTIONS_H))mp_native_set_tap_jump(!mp_native_tap_jump());
+        if(inside(x,y,RESET_X,OPTIONS_Y,RESET_W,OPTIONS_H))mp_native_reset_buttons();
+    }
+#ifdef MP_SMOKE_TEST
+    mp_bottom_controls_state=guide_tab|(picker<MP_BUTTONS?picker+1:0)<<8;
+#endif
+    return 1;
+}
+void mp_bottom_loading(uint16_t* pixels,const char* message){
+    canvas=pixels;background();header("SUPER SMASH BROS.","3DS");
+    center(160,70,"MELEE",63,ink);rect(60,134,200,2,gold);center(160,152,message,15,gold);
+    center(160,207,"NATIVE NINTENDO 3DS PORT",11,muted);
+}
+void mp_bottom_notice(uint16_t* pixels,const char* title,const char* lead,const char* line1,const char* line2,const char* line3,const char* hint){
+    canvas=pixels;background();header(title,"3DS");
+    fit(17,46,lead,19,286,gold);rect(17,78,38,2,gold);
+    fit(17,96,line1,14,286,ink);fit(17,122,line2,12,286,muted);fit(17,140,line3,12,286,muted);
+    rect(0,190,320,50,RGB(10,18,29));rect(0,190,320,1,RGB(80,98,111));fit(17,207,hint,14,286,gold);
+}
+void mp_bottom_draw(uint16_t* pixels,const MPBottomState* s,unsigned fps,unsigned show_fps,unsigned expanded,unsigned rate,unsigned guide){
+    canvas=pixels;background();
+    int battle=s->scene==2||s->scene==3||s->scene==4||s->scene==44;
+    if(guide)guide_page();
+    else if(battle||s->scene==5){
+        char timer[24];if(s->timer)snprintf(timer,sizeof(timer),"%u:%02u",s->seconds/60,s->seconds%60);else snprintf(timer,sizeof(timer),"%s",s->scene==4?"FREE PLAY":s->teams?"TEAMS":"FREE FOR ALL");
+        header(s->scene==5?"MATCH COMPLETE":s->scene==4?"TRAINING":s->scene==3?"SUDDEN DEATH":"MELEE",s->scene==5?"RESULTS":timer);
+        unsigned count=0;for(unsigned i=0;i<4;++i)if(s->players[i].kind!=3)++count;
+        if(count<=2){unsigned row=0;for(unsigned i=0;i<4;++i)if(s->players[i].kind!=3)card(8,38+(row++)*86,304,80,&s->players[i],i,s->scene==4?2:1,s->stock_mode,s->stamina);
+            if(!count)center(160,100,"GET READY",28,gold);
+        }else for(unsigned i=0;i<4;++i)card(8+(i%2)*156,38+(i/2)*86,148,80,&s->players[i],i,1,s->stock_mode,s->stamina);
+    }else if(s->scene==8){
+        header("SELECT YOUR FIGHTER",mode_title(s->mode));
+        for(unsigned i=0;i<4;++i)card(8+(i%2)*156,38+(i/2)*76,148,70,&s->players[i],i,0,0,0);
+        center(160,195,"A: SELECT    B: BACK    START: NEXT",12,gold);
+    }else if(s->scene==9){
+        header("SELECT A STAGE",mode_title(s->mode));
+        center(160,47,"SET THE STAGE",28,ink);
+        if(s->mode==2)rules(s,84);
+        else center(160,88,s->mode==28?"CHOOSE YOUR PRACTICE ARENA":"CHOOSE YOUR BATTLEFIELD",15,gold);
+        text(17,133,"CIRCLE PAD: CHOOSE STAGE",15,ink);text(17,157,"A: CONFIRM     B: FIGHTERS",15,gold);
+        text(17,191,"DISPLAY OPTIONS ARE ALWAYS BELOW",11,muted);
+    }else if(s->scene==0||s->scene==255){
+        mp_bottom_loading(pixels,s->scene==0?"PRESS START":"PREPARING MELEE");
+        rect(0,190,320,24,RGB(10,18,29));center(160,197,s->profile?"FRESH SAVE  /  UCF 0.84":"ALL FIGHTERS UNLOCKED  /  UCF 0.84",11,muted);
+    }else if(s->scene==42){
+        header("WELCOME TO MELEE","3DS");center(160,49,"READY TO PLAY",29,ink);
+        fit(19,102,"A: CONTINUE PAST THE CARD PROMPT",14,282,gold);
+        fit(19,139,s->profile?"UNLOCK FIGHTERS AND STAGES AS YOU PLAY":"EVERY FIGHTER AND STAGE IS UNLOCKED",12,282,ink);
+        fit(19,161,"YOUR PROGRESS SAVES TO THE SD CARD",11,282,muted);
+    }else menu_page(s);
+    footer(fps,show_fps,expanded,rate,guide);
+}

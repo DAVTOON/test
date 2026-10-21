@@ -1,0 +1,326 @@
+
+===== 2026-10-13 23:41:01 builder D:\Start\Melee 3DS CIA Builder\builder python 3.14.7
+Step 1 of 7: Checking your disc image
+   OK: Super Smash Bros. Melee (USA) (En,Ja) (v1.02).iso is Super Smash Bros. Melee (US v1.02)
+Step 2 of 7: Downloading build tools (about 500 MB the first time)
+
+$ C:\MeleeBuild\python\python.exe tools/bootstrap.py --portable-windows
+Cloning into 'C:\MeleeBuild\source\upstream\melee'...
+fatal: unable to access 'https://github.com/doldecomp/melee.git/': error adding trust anchors from file: C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt
+Traceback (most recent call last):
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 106, in <module>
+    main()
+    ~~~~^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 62, in main
+    checkout(lock["repository"],lock["commit"],ROOT/"upstream/melee")
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 35, in checkout
+    run("git","clone","--no-checkout","--filter=blob:none",url,path)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 21, in run
+    subprocess.run(list(map(str,args)),cwd=ROOT,check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\python\Lib\subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--no-checkout', '--filter=blob:none', 'https://github.com/doldecomp/melee.git', 'C:\\MeleeBuild\\source\\upstream\\melee']' returned non-zero exit status 128.
+   The download was interrupted; trying again...
+
+$ C:\MeleeBuild\python\python.exe tools/bootstrap.py --portable-windows
+Cloning into 'C:\MeleeBuild\source\upstream\melee'...
+fatal: unable to access 'https://github.com/doldecomp/melee.git/': error adding trust anchors from file: C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt
+Traceback (most recent call last):
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 106, in <module>
+    main()
+    ~~~~^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 62, in main
+    checkout(lock["repository"],lock["commit"],ROOT/"upstream/melee")
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 35, in checkout
+    run("git","clone","--no-checkout","--filter=blob:none",url,path)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 21, in run
+    subprocess.run(list(map(str,args)),cwd=ROOT,check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\python\Lib\subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--no-checkout', '--filter=blob:none', 'https://github.com/doldecomp/melee.git', 'C:\\MeleeBuild\\source\\upstream\\melee']' returned non-zero exit status 128.
+   The download was interrupted; trying again...
+
+$ C:\MeleeBuild\python\python.exe tools/bootstrap.py --portable-windows
+Cloning into 'C:\MeleeBuild\source\upstream\melee'...
+fatal: unable to access 'https://github.com/doldecomp/melee.git/': error adding trust anchors from file: C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt
+Traceback (most recent call last):
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 106, in <module>
+    main()
+    ~~~~^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 62, in main
+    checkout(lock["repository"],lock["commit"],ROOT/"upstream/melee")
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 35, in checkout
+    run("git","clone","--no-checkout","--filter=blob:none",url,path)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 21, in run
+    subprocess.run(list(map(str,args)),cwd=ROOT,check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\python\Lib\subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--no-checkout', '--filter=blob:none', 'https://github.com/doldecomp/melee.git', 'C:\\MeleeBuild\\source\\upstream\\melee']' returned non-zero exit status 128.
+
+The build stopped:
+Downloading the build tools failed. Check your internet connection and run the builder again.
+
+Last lines of the log (for a bug report):
+      checkout(lock["repository"],lock["commit"],ROOT/"upstream/melee")
+      ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\MeleeBuild\source\tools\bootstrap.py", line 35, in checkout
+      run("git","clone","--no-checkout","--filter=blob:none",url,path)
+      ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\MeleeBuild\source\tools\bootstrap.py", line 21, in run
+      subprocess.run(list(map(str,args)),cwd=ROOT,check=True)
+      ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\MeleeBuild\python\Lib\subprocess.py", line 578, in run
+      raise CalledProcessError(retcode, process.args,
+                               output=stdout, stderr=stderr)
+  subprocess.CalledProcessError: Command '['git', 'clone', '--no-checkout', '--filter=blob:none', 'https://github.com/doldecomp/melee.git', 'C:\\MeleeBuild\\source\\upstream\\melee']' returned non-zero exit status 128.
+
+The full log is C:\MeleeBuild\build-log.txt
+Run the builder again to retry; finished steps are not repeated.
+If it keeps failing, ask for help at https://github.com/2gifts/melee-3ds/issues and attach the log.
+
+===== 2026-10-13 23:45:28 builder D:\Start\Melee 3DS CIA Builder\builder python 3.14.7
+Step 1 of 7: Checking your disc image
+   OK: Super Smash Bros. Melee (USA) (En,Ja) (v1.02).iso is Super Smash Bros. Melee (US v1.02)
+Step 2 of 7: Downloading build tools (about 500 MB the first time)
+
+$ C:\MeleeBuild\python\python.exe tools/bootstrap.py --portable-windows
+Cloning into 'C:\MeleeBuild\source\upstream\melee'...
+fatal: unable to access 'https://github.com/doldecomp/melee.git/': error adding trust anchors from file: C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt
+Traceback (most recent call last):
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 106, in <module>
+    main()
+    ~~~~^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 62, in main
+    checkout(lock["repository"],lock["commit"],ROOT/"upstream/melee")
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 35, in checkout
+    run("git","clone","--no-checkout","--filter=blob:none",url,path)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 21, in run
+    subprocess.run(list(map(str,args)),cwd=ROOT,check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\python\Lib\subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--no-checkout', '--filter=blob:none', 'https://github.com/doldecomp/melee.git', 'C:\\MeleeBuild\\source\\upstream\\melee']' returned non-zero exit status 128.
+   The download was interrupted; trying again...
+
+$ C:\MeleeBuild\python\python.exe tools/bootstrap.py --portable-windows
+Cloning into 'C:\MeleeBuild\source\upstream\melee'...
+fatal: unable to access 'https://github.com/doldecomp/melee.git/': error adding trust anchors from file: C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt
+Traceback (most recent call last):
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 106, in <module>
+    main()
+    ~~~~^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 62, in main
+    checkout(lock["repository"],lock["commit"],ROOT/"upstream/melee")
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 35, in checkout
+    run("git","clone","--no-checkout","--filter=blob:none",url,path)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\source\tools\bootstrap.py", line 21, in run
+    subprocess.run(list(map(str,args)),cwd=ROOT,check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\MeleeBuild\python\Lib\subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--no-checkout', '--filter=blob:none', 'https://github.com/doldecomp/melee.git', 'C:\\MeleeBuild\\source\\upstream\\melee']' returned non-zero exit status 128.
+   The download was interrupted; trying again...
+
+===== 2026-10-20 23:52:29 builder D:\Start\Melee 3DS CIA Builder\builder python 3.14.7
+Step 1 of 7: Checking your disc image
+   Your disc was already read in an earlier run.
+Step 2 of 7: Downloading build tools (about 500 MB the first time)
+Step 3 of 7: Reading the game files from your disc (a few minutes)
+Step 4 of 7: Compiling the game (a few minutes; up to 20 on slower PCs)
+Step 5 of 7: Making the HOME Menu icons and CIA files
+
+$ C:\MeleeBuild\python\python.exe tools/package_native.py --link
+Verified melee.3dsx, melee-fresh.3dsx and 1209 game files (1,426,086,598 bytes) in C:\MeleeBuild\source\dist\native-alpha
+
+$ C:\MeleeBuild\python\python.exe tools/package_cia.py --generated-banner --profile unlocked
+Created SMDH "C:\MeleeBuild\source\build\home-menu\diorama-unlocked\icon.smdh".
+{
+  "title_id": "000400000F4D4500",
+  "title_version": 7,
+  "cia_bytes": 3136448,
+  "sha256": "1d46287e9d03e6d501d0d5dc6d4209cc5af4bf4e496da9d5455ee22c2722c2b3",
+  "code_bytes_verified": 4407296,
+  "elf_sha256": "457da05a6d52b1e2a37faac2fa5704de617edd50219590a5be5ef42e273de916",
+  "cgfx_bytes": 308584,
+  "banner_validation": {
+    "meshes": 4,
+    "materials": 4,
+    "textures": 2,
+    "scene_data_bytes": 21108,
+    "bones": 7,
+    "triangles": 2182,
+    "animation_members": 2,
+    "frames": 192.0,
+    "rigid_only": true,
+    "mesh_bindings_verified": true,
+    "serialized_curves_verified": true,
+    "baked_color_combiners_verified": true,
+    "fighter_outward_fraction": {
+      "Fox 1": 0.9942098015557402,
+      "Fox 2": 0.9950537891089096
+    },
+    "logo_resolution": [
+      256,
+      128
+    ],
+    "logo_format": "RGBA4",
+    "fixed_poses_verified": true,
+    "outward_facing_verified": true,
+    "made_from_disc": true,
+    "cgfx_sha256": "7dbbb826d9b6e72601b98b0aec5d22933a234f60c0c7c393ba0d9445a8e33dab",
+    "console_tested": true,
+    "budget": {
+      "cgfx_bytes": [
+        308584,
+        403544
+      ],
+      "cbmd_bytes": [
+        465368,
+        499896
+      ]
+    }
+  },
+  "sound_validation": {
+    "channels": 2,
+    "rate": 32000,
+    "frames": 93422,
+    "pcm_matches_source": true
+  },
+  "smdh_flags": "00001125",
+  "launch_logo_bytes": 8192,
+  "launch_logo_sha256": "62a5a1f9091aefb46b52e31fbeca2fdba9a99fe2473237e21e35b8d2e5659dff",
+  "launch_logo_validation": {
+    "bytes": 8192,
+    "decoded_bytes": 58944,
+    "files": 12,
+    "both_screens": true,
+    "sha256": "62a5a1f9091aefb46b52e31fbeca2fdba9a99fe2473237e21e35b8d2e5659dff"
+  },
+  "native_app": true,
+  "new_3ds_only": true,
+  "memory_mode": "124MB",
+  "cpu_mhz": 804,
+  "l2_cache": true,
+  "services": [
+    "APT:U",
+    "cfg:u",
+    "dsp::DSP",
+    "fs:USER",
+    "gsp::Gpu",
+    "hid:USER",
+    "ir:rst",
+    "ptm:u",
+    "ptm:sysm"
+  ],
+  "embedded_game_romfs": false,
+  "development_only": false
+}
+
+$ C:\MeleeBuild\python\python.exe tools/package_cia.py --generated-banner --profile fresh
+Created SMDH "C:\MeleeBuild\source\build\home-menu\diorama-fresh\icon.smdh".
+{
+  "title_id": "000400000F4D4600",
+  "title_version": 7,
+  "cia_bytes": 3136448,
+  "sha256": "4fee7a13236c74c6837b2131157dff9622b5cba815d8264498350665d4f47af3",
+  "code_bytes_verified": 4407296,
+  "elf_sha256": "73302a8fd267c526f303d15367a45572643fe0b05618e7688ba0bed75b587748",
+  "cgfx_bytes": 308584,
+  "banner_validation": {
+    "meshes": 4,
+    "materials": 4,
+    "textures": 2,
+    "scene_data_bytes": 21108,
+    "bones": 7,
+    "triangles": 2182,
+    "animation_members": 2,
+    "frames": 192.0,
+    "rigid_only": true,
+    "mesh_bindings_verified": true,
+    "serialized_curves_verified": true,
+    "baked_color_combiners_verified": true,
+    "fighter_outward_fraction": {
+      "Fox 1": 0.9942098015557402,
+      "Fox 2": 0.9950537891089096
+    },
+    "logo_resolution": [
+      256,
+      128
+    ],
+    "logo_format": "RGBA4",
+    "fixed_poses_verified": true,
+    "outward_facing_verified": true,
+    "made_from_disc": true,
+    "cgfx_sha256": "7dbbb826d9b6e72601b98b0aec5d22933a234f60c0c7c393ba0d9445a8e33dab",
+    "console_tested": true,
+    "budget": {
+      "cgfx_bytes": [
+        308584,
+        403544
+      ],
+      "cbmd_bytes": [
+        465368,
+        499896
+      ]
+    }
+  },
+  "sound_validation": {
+    "channels": 2,
+    "rate": 32000,
+    "frames": 93422,
+    "pcm_matches_source": true
+  },
+  "smdh_flags": "00001125",
+  "launch_logo_bytes": 8192,
+  "launch_logo_sha256": "62a5a1f9091aefb46b52e31fbeca2fdba9a99fe2473237e21e35b8d2e5659dff",
+  "launch_logo_validation": {
+    "bytes": 8192,
+    "decoded_bytes": 58944,
+    "files": 12,
+    "both_screens": true,
+    "sha256": "62a5a1f9091aefb46b52e31fbeca2fdba9a99fe2473237e21e35b8d2e5659dff"
+  },
+  "native_app": true,
+  "new_3ds_only": true,
+  "memory_mode": "124MB",
+  "cpu_mhz": 804,
+  "l2_cache": true,
+  "services": [
+    "APT:U",
+    "cfg:u",
+    "dsp::DSP",
+    "fs:USER",
+    "gsp::Gpu",
+    "hid:USER",
+    "ir:rst",
+    "ptm:u",
+    "ptm:sysm"
+  ],
+  "embedded_game_romfs": false,
+  "development_only": false
+}
+Step 6 of 7: Collecting everything for your SD card
+Step 7 of 7: SD card
+   No 3DS SD card is plugged in. Copy the files yourself (see "What to do next.txt").
+
+All done in 1 minute. Your files are in:
+   C:\MeleeBuild\Melee for 3DS
+Open "What to do next.txt" there for the last steps on your 3DS.
